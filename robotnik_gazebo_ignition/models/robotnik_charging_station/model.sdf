@@ -154,16 +154,10 @@
       <link name='marker1_border_12cm'>
         <visual name='marker_visual'>
           <geometry>
-            <box>
-              <size>0.001 0.14 0.14</size>
-            </box>
+            <mesh>
+              <uri>meshes/marker1_border_12cm.dae</uri>
+            </mesh>
           </geometry>
-          <material>
-            <script>
-              <uri>material/scripts</uri>
-              <name>ARtrack/marker1_border_12cm</name>
-            </script>
-          </material>
         </visual>
         <collision name='marker_collision'>
           <geometry>

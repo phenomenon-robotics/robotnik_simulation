@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="utf-8"?>
+<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1">
+
+  <asset>
+    <contributor>
+      <authoring_tool>VISCOFAN Gazebo Simulation</authoring_tool>
+    </contributor>
+
+    <unit name="meter" meter="1"/>
+    <up_axis>Z_UP</up_axis>
+  </asset>
+
+  <!-- ===================================================================== -->
+  <!-- AprilTag texture                                                      -->
+  <!-- ===================================================================== -->
+
+  <library_images>
+    <image id="marker-image" name="marker-image">
+      <init_from>../material/textures/marker1_border_12cm.png</init_from>
+    </image>
+  </library_images>
+
+  <!-- ===================================================================== -->
+  <!-- Material effect                                                       -->
+  <!-- ===================================================================== -->
+
+  <library_effects>
+
+    <effect id="marker-effect">
+
+      <profile_COMMON>
+
+        <newparam sid="marker-surface">
+          <surface type="2D">
+            <init_from>marker-image</init_from>
+          </surface>
+        </newparam>
+
+        <newparam sid="marker-sampler">
+          <sampler2D>
+            <source>marker-surface</source>
+          </sampler2D>
+        </newparam>
+
+        <technique sid="common">
+
+          <lambert>
+
+            <emission>
+              <color>0 0 0 1</color>
+            </emission>
+
+            <ambient>
+              <color>1 1 1 1</color>
+            </ambient>
+
+            <diffuse>
+              <texture texture="marker-sampler" texcoord="UVSET0"/>
+            </diffuse>
+
+            <transparent opaque="A_ONE">
+              <color>1 1 1 1</color>
+            </transparent>
+
+            <transparency>
+              <float>1.0</float>
+            </transparency>
+
+          </lambert>
+
+        </technique>
+
+      </profile_COMMON>
+
+    </effect>
+
+  </library_effects>
+
+  <!-- ===================================================================== -->
+  <!-- Material                                                              -->
+  <!-- ===================================================================== -->
+
+  <library_materials>
+
+    <material id="marker-material" name="marker-material">
+      <instance_effect url="#marker-effect"/>
+    </material>
+
+  </library_materials>
+
+  <!-- ===================================================================== -->
+  <!-- Geometry                                                              -->
+  <!--                                                                        -->
+  <!-- 14 cm x 14 cm plane.                                                  -->
+  <!--                                                                        -->
+  <!-- The original SDF marker used:                                         -->
+  <!--                                                                        -->
+  <!--     <size>0.001 0.14 0.14</size>                                     -->
+  <!--                                                                        -->
+  <!-- Therefore the visible plane lies in Y-Z and its normal points along X.-->
+  <!-- ===================================================================== -->
+
+  <library_geometries>
+
+    <geometry id="marker-geometry" name="marker-geometry">
+
+      <mesh>
+
+        <!-- Positions -->
+
+        <source id="marker-positions">
+
+          <float_array
+            id="marker-positions-array"
+            count="12">
+            0 -0.07 -0.07
+            0  0.07 -0.07
+            0  0.07  0.07
+            0 -0.07  0.07
+          </float_array>
+
+          <technique_common>
+            <accessor
+              source="#marker-positions-array"
+              count="4"
+              stride="3">
+
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+
+            </accessor>
+          </technique_common>
+
+        </source>
+
+        <!-- Normals -->
+
+        <source id="marker-normals">
+
+          <float_array
+            id="marker-normals-array"
+            count="3">
+            1 0 0
+          </float_array>
+
+          <technique_common>
+            <accessor
+              source="#marker-normals-array"
+              count="1"
+              stride="3">
+
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+
+            </accessor>
+          </technique_common>
+
+        </source>
+
+        <!-- UV coordinates -->
+
+        <source id="marker-uv">
+
+          <float_array
+            id="marker-uv-array"
+            count="8">
+            0 0
+            1 0
+            1 1
+            0 1
+          </float_array>
+
+          <technique_common>
+            <accessor
+              source="#marker-uv-array"
+              count="4"
+              stride="2">
+
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+
+            </accessor>
+          </technique_common>
+
+        </source>
+
+        <!-- Vertices -->
+
+        <vertices id="marker-vertices">
+
+          <input
+            semantic="POSITION"
+            source="#marker-positions"/>
+
+        </vertices>
+
+        <!-- Two triangles -->
+
+        <triangles
+          material="marker-material"
+          count="2">
+
+          <input
+            semantic="VERTEX"
+            source="#marker-vertices"
+            offset="0"/>
+
+          <input
+            semantic="NORMAL"
+            source="#marker-normals"
+            offset="1"/>
+
+          <input
+            semantic="TEXCOORD"
+            source="#marker-uv"
+            offset="2"
+            set="0"/>
+
+          <p>
+            0 0 0
+            1 0 1
+            2 0 2
+
+            0 0 0
+            2 0 2
+            3 0 3
+          </p>
+
+        </triangles>
+
+      </mesh>
+
+    </geometry>
+
+  </library_geometries>
+
+  <!-- ===================================================================== -->
+  <!-- Scene node                                                            -->
+  <!-- ===================================================================== -->
+
+  <library_visual_scenes>
+
+    <visual_scene id="Scene" name="Scene">
+
+      <node id="marker-node" name="marker-node">
+
+        <instance_geometry url="#marker-geometry">
+
+          <bind_material>
+
+            <technique_common>
+
+              <instance_material
+                symbol="marker-material"
+                target="#marker-material">
+
+                <bind_vertex_input
+                  semantic="UVSET0"
+                  input_semantic="TEXCOORD"
+                  input_set="0"/>
+
+              </instance_material>
+
+            </technique_common>
+
+          </bind_material>
+
+        </instance_geometry>
+
+      </node>
+
+    </visual_scene>
+
+  </library_visual_scenes>
+
+  <scene>
+    <instance_visual_scene url="#Scene"/>
+  </scene>
+
+</COLLADA>
