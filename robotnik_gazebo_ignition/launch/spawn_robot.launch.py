@@ -24,7 +24,6 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import tempfile
 import yaml
-
 from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription, OpaqueFunction, RegisterEventHandler
 from launch.launch_description_sources import PythonLaunchDescriptionSource
@@ -32,18 +31,13 @@ from launch.substitutions import LaunchConfiguration
 from launch.substitutions import EqualsSubstitution
 from launch.utilities import normalize_to_list_of_substitutions, perform_substitutions
 from launch.conditions import IfCondition, UnlessCondition
-
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 from launch_ros.parameter_descriptions import ParameterFile
-
 from robotnik_common.launch import AddArgumentParser, ExtendedArgument
-
 from pathlib import Path
-
 def generate_rviz_config(context, rviz_config_path, robot_id, frame_prefix):
     """Generate an RViz config adapted to the current robot instance.
-
     The default RViz config is stored with topics under /robot/ and frames using
     the robot_ prefix. When spawning robots with a different robot_id or
     frame_prefix, create a temporary RViz config pointing to the correct topics
@@ -57,25 +51,20 @@ def generate_rviz_config(context, rviz_config_path, robot_id, frame_prefix):
         context,
         normalize_to_list_of_substitutions(frame_prefix),
     )
-
     with open(rviz_config_path, 'r') as f:
         content = f.read()
     # Replace only the default robot namespace and frame prefix used by the
     # template RViz config.
     robot_ns_placeholder = '__ROBOT_NAMESPACE_PLACEHOLDER__'
     robot_description_placeholder = '__ROBOT_DESCRIPTION_PLACEHOLDER__'
-
     # Protect values that must not be affected by the frame-prefix replacement.
     content = content.replace('/robot/', f'/{robot_ns_placeholder}/')
     content = content.replace('robot_description', robot_description_placeholder)
-
     # Replace the default frame prefix used by the RViz config.
     content = content.replace('robot_', frame_prefix_value)
-
     # Restore protected values with the current robot namespace.
     content = content.replace(f'/{robot_ns_placeholder}/', f'/{robot_id_value}/')
     content = content.replace(robot_description_placeholder, 'robot_description')
-
     with tempfile.NamedTemporaryFile(
         mode='w',
         prefix='rviz_config_',
@@ -84,16 +73,13 @@ def generate_rviz_config(context, rviz_config_path, robot_id, frame_prefix):
     ) as tmp:
         tmp.write(content)
         return tmp.name
-
 def substitute_param_context(param, context):
     """Resolve a parameter if it is a LaunchConfiguration."""
     if isinstance(param, LaunchConfiguration):
         return param.perform(context)
     return param
-
 def launch_setup(context, params):
     ret = []
-
     # Robot Description
     ret.append(IncludeLaunchDescription(
         PythonLaunchDescriptionSource([
@@ -109,7 +95,6 @@ def launch_setup(context, params):
             'low_performance_simulation': params['low_performance_simulation']
         }.items(),
     ))
-
     # Spawner
     ret.append(Node(
         package='ros_gz_sim',
@@ -122,10 +107,10 @@ def launch_setup(context, params):
             '-x', params['x'],
             '-y', params['y'],
             '-z', params['z'],
+            '-Y', params['yaw'],
         ],
         output='screen',
     ))
-
     # Gazebo bridge
     def generate_bridge_yaml(params) -> str:
         robot_id = substitute_param_context(params['robot_id'], context)
@@ -147,13 +132,11 @@ def launch_setup(context, params):
             bridge_raw.extend([
                 ( f"/{robot_id}/{points_name}_lidar/scan/points", f"/{robot_id}/{points_name}_laser/points", "sensor_msgs/msg/PointCloud2", "gz.msgs.PointCloudPacked", "GZ_TO_ROS"),
             ])
-
         def add_depth_camera(camera_name):
             bridge_raw.extend([
                 (f"/{robot_id}/{camera_name}_camera_depth/depth/camera_info", f"/{robot_id}/{camera_name}_rgbd_camera/depth/camera_info", "sensor_msgs/msg/CameraInfo", "gz.msgs.CameraInfo", "GZ_TO_ROS"),
                 (f"/{robot_id}/{camera_name}_camera_depth/depth/image_raw", f"/{robot_id}/{camera_name}_rgbd_camera/depth/image_raw", "sensor_msgs/msg/Image", "gz.msgs.Image", "GZ_TO_ROS"),
             ])
-
         add_camera("front")
         add_camera("rear")
         add_camera("top_ptz")
@@ -163,12 +146,10 @@ def launch_setup(context, params):
         add_laser("rear")
         add_pointcloud("top")
         #add_pointcloud("front")
-
         bridge_config = [{"ros_topic_name": ros, "gz_topic_name": gz, "ros_type_name": ros_type, "gz_type_name": gz_type, "direction": direction} for gz, ros, ros_type, gz_type, direction in bridge_raw]
         with tempfile.NamedTemporaryFile(mode='w', delete=False) as tmp:
             yaml.dump(bridge_config, tmp)
             return tmp.name
-
     bridge_yaml = generate_bridge_yaml(params)
     ret.append(Node(
         package="ros_gz_bridge",
@@ -178,15 +159,11 @@ def launch_setup(context, params):
         ],
         namespace=params['robot_id'],
     ))
-
-
     def extract_controllers_from_yaml(yaml_path):
-
         data = {}
         existing_controllers = []
         # Load the YAML file
         with open(yaml_path, 'r') as f:
-
             # Read the file content
             content = f.read()
             # Remove the string "---\n/**:" if it exists at the beginning
@@ -197,16 +174,13 @@ def launch_setup(context, params):
             f = tempfile.SpooledTemporaryFile(mode='w+')
             f.write(content)
             f.seek(0)
-
             try:
                 data = yaml.safe_load(f)
             except Exception as e:
                 raise RuntimeError(f"Failed to parse YAML file '{yaml_path}': {e}")
-
         for controller in data:
             existing_controllers.append(controller)
         return existing_controllers
-
     def get_ros2_control_yaml_path(params):
         base_path = (
             Path(FindPackageShare('robotnik_gazebo_ignition').perform(context))
@@ -216,10 +190,8 @@ def launch_setup(context, params):
         )
         robot_model = substitute_param_context(params['robot_model'], context)
         return str(base_path / f'{robot_model}_ros2_control.yaml')
-
     path = get_ros2_control_yaml_path(params)
     new_controllers = extract_controllers_from_yaml(path)
-
     # ROS2 control
     controllers =  ['--controller-manager-timeout', '60',
                     '--service-call-timeout', '60',
@@ -231,14 +203,11 @@ def launch_setup(context, params):
         controllers.remove('joint_state_broadcaster')
     controllers.extend(new_controllers)
     print("Controllers to be spawned:", controllers)
-
     robot_controller_config = ParameterFile(path, allow_substs=True)
-
     # RB-CAR uses the standard Ackermann controller and requires controller-specific
     # ROS argument remaps. Spawn it separately so these remaps are applied only to
     # robotnik_base_control.
     is_rbcar = EqualsSubstitution(params['robot'], 'rbcar')
-
     ret.append(Node(
         package='controller_manager',
         executable='spawner',
@@ -248,7 +217,6 @@ def launch_setup(context, params):
         output='screen',
         condition=UnlessCondition(is_rbcar),
     ))
-
     rbcar_joint_state_broadcaster = [
         '--controller-manager-timeout', '60',
         '--service-call-timeout', '60',
@@ -264,7 +232,6 @@ def launch_setup(context, params):
         output='screen',
         condition=IfCondition(is_rbcar),
     ))
-
     rbcar_ackermann_controller = [
         '--controller-manager-timeout', '60',
         '--service-call-timeout', '60',
@@ -280,7 +247,6 @@ def launch_setup(context, params):
         output='screen',
         condition=IfCondition(is_rbcar),
     ))
-
     # If no custom RViz config is provided, adapt the default RViz config to the
     # current robot namespace and frame prefix. The default config is authored for
     # robot_id="robot" and frame_prefix="robot_".
@@ -291,13 +257,11 @@ def launch_setup(context, params):
         / 'config'
         / 'rviz_config.rviz'
     )
-
     if isinstance(params['rviz_config'], LaunchConfiguration):
         rviz_config_value = params['rviz_config'].perform(context)
         use_default_rviz_config = (rviz_config_value == "")
     else:
         use_default_rviz_config = (params['rviz_config'] == "")
-
     if use_default_rviz_config:
         params['rviz_config'] = generate_rviz_config(
             context,
@@ -305,9 +269,7 @@ def launch_setup(context, params):
             params['robot_id'],
             params['frame_prefix'],
     )
-
     use_sim_time = {"use_sim_time": True}
-
     # RViz
     ret.append(Node(
         package="rviz2",
@@ -326,10 +288,7 @@ def launch_setup(context, params):
             ],
         condition=IfCondition(params['run_rviz'])
     ))
-
     return ret
-
-
 def generate_launch_description():
     raw_args = [
         ("robot_id", "Unique Robot Identifier", "robot", "ROBOT_ID"),
@@ -340,13 +299,13 @@ def generate_launch_description():
         ("x", "Initial X Coordinate", "0.0", "X"),
         ("y", "Initial Y Coordinate", "0.0", "Y"),
         ("z", "Initial Z Coordinate", "0.0", "Z"),
+        ("yaw", "Initial Yaw Angle", "0.0", "YAW"),
         ("arm_type", "Type of robotic arm", "ur10e", "ARM_TYPE"),
         ("run_rviz", "Run RViz", "True", "RUN_RVIZ"),
         ("rviz_config", "RViz configuration file", "", "CONFIG_RVIZ"),
         ("use_sim_time", "Use simulation time", "True", "USE_SIM_TIME"),
         ("low_performance_simulation", "Enable Low Performance Simulation", "False", "LOW_PERFORMANCE_SIMULATION"),
     ]
-
     ld = LaunchDescription()
     add_to_launcher = AddArgumentParser(ld)
     for arg in raw_args:
