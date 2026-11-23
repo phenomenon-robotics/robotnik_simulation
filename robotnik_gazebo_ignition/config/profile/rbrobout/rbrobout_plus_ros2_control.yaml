@@ -116,3 +116,27 @@
 
       allow_partial_joints_goal: false
       open_loop_control: true
+
+  # ************************************************************
+  # Zimmer GED5010IO - Expanding Gripper Controller
+  # ************************************************************
+
+  zimmer_gripper_controller:
+    ros__parameters:
+
+      joints:
+        - $(var frame_prefix)zimmer_finger_1_joint
+        - $(var frame_prefix)zimmer_finger_2_joint
+        - $(var frame_prefix)zimmer_finger_3_joint
+
+      command_interfaces:
+        - position
+
+      state_interfaces:
+        - position
+        - velocity
+
+      state_publish_rate: 50.0
+      action_monitor_rate: 20.0
+
+      allow_partial_joints_goal: false
